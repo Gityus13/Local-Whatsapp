@@ -1,0 +1,29 @@
+# Node
+node_modules/
+
+# Uploaded files (don't commit user uploads)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

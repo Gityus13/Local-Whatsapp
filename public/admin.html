@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LocalChat Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --sub: #8b949e;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --blue: #58a6ff;
+  --orange: #f0883e;
+  --hover: #21262d;
+  --input: #0d1117;
+  --radius: 10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── Login ── */
+#login-screen {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+#login-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 40px;
+  width: min(400px, 92vw);
+  text-align: center;
+}
+#login-box .shield { font-size: 56px; margin-bottom: 16px; }
+#login-box h1 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+#login-box p { color: var(--sub); font-size: 14px; margin-bottom: 28px; }
+.field {
+  width: 100%;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit; font-size: 15px;
+  padding: 12px 16px; outline: none;
+  transition: border-color .2s;
+  margin-bottom: 12px;
+}
+.field:focus { border-color: var(--blue); }
+.btn {
+  width: 100%;
+  border: none; border-radius: 8px;
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  padding: 12px; cursor: pointer; transition: opacity .15s;
+}
+.btn:hover { opacity: .85; }
+.btn-blue { background: var(--blue); color: #000; }
+.btn-red  { background: var(--red);  color: #fff; }
+.btn-green{ background: var(--green);color: #000; }
+#login-error { color: var(--red); font-size: 13px; margin-top: 8px; display:none; }
+
+/* ── Dashboard ── */
+#dashboard { display: none; }
+
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+header .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; }
+header .badge {
+  background: var(--red); color: #fff;
+  border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 700;
+}
+header .online { color: var(--green); font-size: 13px; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+/* Stats row */
+.stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px; margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+}
+.stat-card .val { font-size: 32px; font-weight: 800; }
+.stat-card .lbl { font-size: 13px; color: var(--sub); margin-top: 4px; }
+.val.green { color: var(--green); }
+.val.red   { color: var(--red); }
+.val.blue  { color: var(--blue); }
+.val.orange{ color: var(--orange); }
+
+/* Grid layout */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media(max-width:860px){ .grid-2 { grid-template-columns:1fr; } }
+
+/* Cards */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; font-size: 15px;
+}
+.card-header .count {
+  background: var(--hover);
+  border-radius: 20px; padding: 2px 10px; font-size: 12px;
+  color: var(--sub);
+}
+.card-body { padding: 16px 20px; }
+
+/* User rows */
+.user-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 8px;
+  transition: background .15s;
+  margin-bottom: 4px;
+}
+.user-row:hover { background: var(--hover); }
+.avatar-sm {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #000; flex-shrink: 0;
+}
+.user-row .uname { flex: 1; font-weight: 600; font-size: 14px; }
+.user-row .uid   { font-size: 11px; color: var(--sub); font-family: monospace; }
+.kick-btn {
+  background: rgba(248,81,73,.15);
+  border: 1px solid rgba(248,81,73,.3);
+  color: var(--red); border-radius: 6px;
+  padding: 5px 12px; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+  font-family: inherit;
+}
+.kick-btn:hover { background: rgba(248,81,73,.3); }
+
+/* Word filter */
+.word-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.word-input-row input { flex: 1; }
+.word-input-row button { width: auto; }
+.word-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.word-tag {
+  background: rgba(240,136,62,.12);
+  border: 1px solid rgba(240,136,62,.3);
+  color: var(--orange);
+  border-radius: 20px; padding: 4px 12px;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+.word-tag .rm {
+  cursor: pointer; opacity: .6; font-size: 15px; line-height: 1;
+  background: none; border: none; color: inherit;
+}
+.word-tag .rm:hover { opacity: 1; }
+.empty-note { color: var(--sub); font-size: 13px; font-style: italic; }
+
+/* Kick log */
+.log-row {
+  padding: 9px 12px; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.log-row:last-child { border-bottom: none; }
+.log-row .log-name { font-weight: 700; color: var(--red); flex-shrink:0; }
+.log-row .log-reason { flex: 1; color: var(--sub); }
+.log-row .log-time { font-size: 11px; color: var(--sub); flex-shrink:0; }
+
+/* Kick modal */
+#kick-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 100;
+  align-items: center; justify-content: center;
+}
+#kick-modal.show { display: flex; }
+#kick-modal-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 32px 28px;
+  width: min(380px, 92vw);
+}
+#kick-modal-box h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+#kick-modal-box p { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+#kick-modal-box .actions { display: flex; gap: 10px; margin-top: 16px; }
+#kick-modal-box .actions button { flex: 1; }
+.btn-ghost {
+  background: var(--hover); color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 18px;
+  font-size: 13px; z-index: 999;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div id="login-box">
+    <div class="shield">🛡️</div>
+    <h1>Admin Panel</h1>
+    <p>LocalChat — enter the admin password to continue</p>
+    <input class="field" type="password" id="pw-input" placeholder="Admin password..." />
+    <button class="btn btn-blue" id="pw-btn">Unlock →</button>
+    <div id="login-error">❌ Wrong password, try again.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <header>
+    <div class="logo">🛡️ LocalChat Admin</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="online" id="online-count">● 0 online</span>
+      <span class="badge">ADMIN</span>
+    </div>
+  </header>
+
+  <div class="page">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="val green" id="stat-online">0</div>
+        <div class="lbl">Online now</div>
+      </div>
+      <div class="stat-card">
+        <div class="val orange" id="stat-words">0</div>
+        <div class="lbl">Banned words</div>
+      </div>
+      <div class="stat-card">
+        <div class="val red" id="stat-kicks">0</div>
+        <div class="lbl">Total kicks</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:24px">
+      <!-- Online users -->
+      <div class="card">
+        <div class="card-header">
+          👥 Online Users
+          <span class="count" id="users-count">0</span>
+        </div>
+        <div class="card-body" id="users-list">
+          <div class="empty-note">No users connected yet.</div>
+        </div>
+      </div>
+
+      <!-- Word filter -->
+      <div class="card">
+        <div class="card-header">
+          🚫 Word Filter
+          <span class="count" id="words-count">0</span>
+        </div>
+        <div class="card-body">
+          <div class="word-input-row">
+            <input class="field" id="word-input" placeholder="Type a word to ban..." style="margin-bottom:0"/>
+            <button class="btn btn-red" style="width:auto;padding:0 16px" id="add-word-btn">+ Add</button>
+          </div>
+          <div class="word-tags" id="word-tags">
+            <span class="empty-note">No banned words yet.</span>
+          </div>
+          <p style="color:var(--sub);font-size:12px;margin-top:12px">
+            ⚡ Anyone who types a banned word (public or private) is instantly kicked.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kick log -->
+    <div class="card">
+      <div class="card-header">
+        📋 Kick History
+        <span class="count" id="log-count">0</span>
+      </div>
+      <div class="card-body" id="kick-log">
+        <div class="empty-note">No kicks yet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Kick modal -->
+<div id="kick-modal">
+  <div id="kick-modal-box">
+    <h3>⛔ Kick User</h3>
+    <p id="kick-modal-name">Are you sure you want to kick this user?</p>
+    <input class="field" id="kick-reason" placeholder="Reason (optional)..." style="margin-bottom:0"/>
+    <div class="actions">
+      <button class="btn btn-ghost" id="kick-cancel-btn">Cancel</button>
+      <button class="btn btn-red" id="kick-confirm-btn">Kick</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+let pendingKickId = null;
+let pendingKickName = '';
+
+// ── Login ──────────────────────────────────────────────────
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('pw-btn').click();
+});
+
+document.getElementById('pw-btn').addEventListener('click', () => {
+  const pw = document.getElementById('pw-input').value;
+  socket.emit('admin_login', { password: pw });
+});
+
+socket.on('admin_login_result', ({ ok, error }) => {
+  if (ok) {
+    document.getElementById('login-screen').style.display = 'none';
+    const dash = document.getElementById('dashboard');
+    dash.style.display = 'block';
+    gsap.fromTo(dash, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .35 });
+  } else {
+    const err = document.getElementById('login-error');
+    err.style.display = 'block';
+    gsap.fromTo('#login-box', { x: -10 }, { x: 0, duration: .4, ease: 'elastic.out(1,.3)' });
+  }
+});
+
+// ── Admin state ─────────────────────────────────────────────
+socket.on('admin_state', ({ users, filterWords, kickLog }) => {
+  renderUsers(users);
+  renderWords(filterWords);
+  renderKickLog(kickLog);
+
+  document.getElementById('stat-online').textContent  = users.length;
+  document.getElementById('stat-words').textContent   = filterWords.length;
+  document.getElementById('stat-kicks').textContent   = kickLog.length;
+  document.getElementById('online-count').textContent = `● ${users.length} online`;
+  document.getElementById('users-count').textContent  = users.length;
+  document.getElementById('words-count').textContent  = filterWords.length;
+  document.getElementById('log-count').textContent    = kickLog.length;
+});
+
+function renderUsers(users) {
+  const el = document.getElementById('users-list');
+  if (!users.length) { el.innerHTML = '<div class="empty-note">No users connected yet.</div>'; return; }
+  el.innerHTML = '';
+  users.forEach(u => {
+    const row = document.createElement('div');
+    row.className = 'user-row';
+    row.innerHTML = `
+      <div class="avatar-sm" style="background:${u.avatar.color}">${u.avatar.initials}</div>
+      <div style="flex:1;min-width:0">
+        <div class="uname">${esc(u.name)}</div>
+        <div class="uid">${u.id.slice(0,12)}…</div>
+      </div>
+      <button class="kick-btn">Kick</button>
+    `;
+    row.querySelector('.kick-btn').addEventListener('click', () => openKickModal(u.id, u.name));
+    el.appendChild(row);
+    gsap.fromTo(row, { opacity:0, x:-10 }, { opacity:1, x:0, duration:.2 });
+  });
+}
+
+function renderWords(words) {
+  const el = document.getElementById('word-tags');
+  if (!words.length) { el.innerHTML = '<span class="empty-note">No banned words yet.</span>'; return; }
+  el.innerHTML = '';
+  words.forEach(w => {
+    const tag = document.createElement('div');
+    tag.className = 'word-tag';
+    tag.innerHTML = `${esc(w)} <button class="rm" title="Remove">✕</button>`;
+    tag.querySelector('.rm').addEventListener('click', () => {
+      socket.emit('admin_remove_word', { word: w });
+    });
+    el.appendChild(tag);
+    gsap.fromTo(tag, { scale:.6, opacity:0 }, { scale:1, opacity:1, duration:.2, ease:'back.out(2)' });
+  });
+}
+
+function renderKickLog(log) {
+  const el = document.getElementById('kick-log');
+  if (!log.length) { el.innerHTML = '<div class="empty-note">No kicks yet.</div>'; return; }
+  el.innerHTML = '';
+  log.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML = `
+      <span class="log-name">⛔ ${esc(entry.name)}</span>
+      <span class="log-reason">${esc(entry.reason)}</span>
+      <span class="log-time">${formatTime(entry.time)}</span>
+    `;
+    el.appendChild(row);
+  });
+}
+
+// ── Add word ───────────────────────────────────────────────
+document.getElementById('add-word-btn').addEventListener('click', addWord);
+document.getElementById('word-input').addEventListener('keydown', e => { if (e.key === 'Enter') addWord(); });
+
+function addWord() {
+  const input = document.getElementById('word-input');
+  const word = input.value.trim();
+  if (!word) return;
+  socket.emit('admin_add_word', { word });
+  input.value = '';
+  input.focus();
+}
+
+// ── Kick modal ─────────────────────────────────────────────
+function openKickModal(id, name) {
+  pendingKickId = id;
+  pendingKickName = name;
+  document.getElementById('kick-modal-name').textContent = `Kick "${name}" from the chat?`;
+  document.getElementById('kick-reason').value = '';
+  const modal = document.getElementById('kick-modal');
+  modal.classList.add('show');
+  gsap.fromTo('#kick-modal-box', { scale:.9, opacity:0 }, { scale:1, opacity:1, duration:.2, ease:'back.out(1.5)' });
+}
+
+document.getElementById('kick-cancel-btn').addEventListener('click', () => {
+  document.getElementById('kick-modal').classList.remove('show');
+});
+
+document.getElementById('kick-confirm-btn').addEventListener('click', () => {
+  const reason = document.getElementById('kick-reason').value.trim() || 'Kicked by admin';
+  socket.emit('admin_kick', { targetId: pendingKickId, reason });
+  document.getElementById('kick-modal').classList.remove('show');
+  toast(`⛔ ${pendingKickName} was kicked`);
+});
+
+document.getElementById('kick-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('kick-modal')) {
+    document.getElementById('kick-modal').classList.remove('show');
+  }
+});
+
+// ── Shutdown ───────────────────────────────────────────────
+socket.on('server_shutdown', () => {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px"><div style="font-size:48px">🔴</div><h2 style="color:#f85149">Server Offline</h2></div>';
+});
+
+// ── Utils ──────────────────────────────────────────────────
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+}
+function toast(text) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = text;
+  document.body.appendChild(t);
+  gsap.fromTo(t, { opacity:0, y:20 }, { opacity:1, y:0, duration:.25 });
+  setTimeout(() => gsap.to(t, { opacity:0, y:20, duration:.2, onComplete: () => t.remove() }), 3000);
+}
+
+gsap.fromTo('#login-box', { opacity:0, y:20 }, { opacity:1, y:0, duration:.4, ease:'back.out(1.4)' });
+</script>
+</body>
+</html>
