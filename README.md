@@ -11,15 +11,15 @@ Looks and feels like WhatsApp. Includes public chat, private DMs, file sharing, 
 
 **Option A — Using Git (recommended):**
 ```bash
-git clone https://github.com/YOUR_USERNAME/localchat.git
-cd localchat
+git clone https://github.com/Gityus13/Local-Whatsapp.git
+cd Local-Whatsapp
 ```
 
 **Option B — Download ZIP:**  
 Click the green **Code** button on GitHub → **Download ZIP** → Extract it → Open the folder in terminal.
 
 ```bash
-cd localchat-main
+cd Local-Whatsapp
 ```
 
 ---
